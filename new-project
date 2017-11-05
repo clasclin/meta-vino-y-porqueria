@@ -1,0 +1,239 @@
+#!/usr/bin/env perl
+#
+# new-project - template for new perl scripts
+#
+
+use strict;
+use warnings;
+use utf8::all;
+use diagnostics;
+use autodie;
+use Getopt::Long; 
+use Pod::Usage;
+use File::Basename;
+
+## prototypes definitions
+
+sub build_tree($);
+sub create_file($);
+sub save_file($$);
+sub find_template($$);
+
+## variables definitions
+
+my ( $help, $project_name ) = 0;
+
+GetOptions(
+    'help'           => \$help,
+    'project-name=s' => \$project_name,
+);
+
+## main program
+
+if ($help) {
+    pod2usage(2);
+}
+elsif ($project_name) {
+    unless ( -d $project_name ) {
+        print "Creando nuevo proyecto: $project_name\n";
+        build_tree($project_name);
+    }
+}
+else {
+    pod2usage("$0: no args given");
+}
+
+## functions definitions
+
+sub build_tree($) {
+    my $project        = shift;
+    my $project_dir    = "$ENV{HOME}/proyectos/$project";
+    my $project_lib    = "$project_dir/lib";
+    my $project_t      = "$project_dir/t";
+    my $project_pl     = "$project_dir/$project.pl";
+    my $project_pm     = "$project_dir/lib/$project.pm";
+    my $project_readme = "$project_dir/README.md";
+    my $project_lic    = "$project_dir/LICENCE";
+    my $project_git    = "$project_dir/.gitignore";
+
+    # create necesary dirs
+    mkdir $project_dir unless -d $project_dir;
+    mkdir $project_lib unless -d $project_lib;
+    mkdir $project_t   unless -d $project_t;
+
+    # create necesary files
+    create_file($project_pl); 
+    create_file($project_pm);
+    create_file($project_readme); 
+    create_file($project_lic);
+    create_file($project_git);
+}
+
+sub create_file($) {
+    my $full_path = shift;
+
+    my @ext = qw/ pl pm md pl6 pm6 /;
+    my ( $name_dot, undef, $suffix ) = fileparse($full_path, @ext);
+    my ( $template, $sane_name );
+
+    if ( $suffix ) {
+        if ( $suffix =~ /pm6|md/ ) {
+            $sane_name = ( split(/\./, ucfirst($name_dot)) )[0];
+        }
+        elsif ( $suffix =~ /pm/ ) {
+            $sane_name = ( split(/\./, ucfirst($name_dot)) )[0];
+            $full_path = dirname($full_path) . "/$sane_name." . $suffix;
+        }
+        elsif ( $suffix =~ /pl|pl6/ ) {
+            $sane_name = ( split(/\./, lc($name_dot)) )[0];
+        }
+        $template = find_template($suffix, $sane_name);
+    }
+    else {
+        my $sane_name = basename $full_path;
+        if ( $sane_name =~ 'LICENCE' ) {
+            $template = find_template('lic', $full_path);
+        }
+        elsif ( $sane_name =~ '.gitignore' ) {
+            $template = find_template('git', $full_path);
+        }
+    }
+    print $full_path, "\n";
+    save_file($full_path, $$template);
+}
+
+sub save_file($$) {
+    my ( $name, $data ) = @_;
+
+    unless ( -f $name ) {
+        open my $fh, '>>', $name;
+        print $fh $data;
+        close $fh;
+    }
+}
+
+sub find_template($$) {
+    my ( $extension, $script_name ) = @_;
+
+    my %templates = (
+        pl => 
+              <<~"END"
+              #!/usr/bin/env perl
+              #
+              # $script_name - Description
+              #
+
+              use strict;
+              use warnings;
+              use utf8::all;
+              use diagnostics;
+              use autodie;
+              use Getopt::Long;
+              use Pod::Usage;
+              use lib 'lib';
+
+              #use Data::Dumper::Names;
+
+              # code goes here :)
+
+              END
+        ,
+        pm =>
+              <<~"END"
+              package $script_name;
+
+              use strict;
+              use warnings;
+              use utf8::all;
+
+              # code goes here :)
+
+              1;
+
+              END
+        ,
+        md =>
+              <<~"END"
+              # NAME
+
+              $script_name - description
+
+              # SYNOPSIS
+
+              # DESCRIPTION
+
+              # AUTHOR
+
+              Cristian Sanabria <clasclin at gmail period com>
+
+              # BUGS
+
+              # SEE ALSO
+
+              END
+        ,
+        git =>
+              <<~'END'
+              lib/.precomp/*
+              !lib
+              *swp
+              .precomp/*
+              END
+        ,
+        lic => 
+              <<~'END'
+              MIT License
+
+              Copyright (c) 2016 clasclin
+
+              Permission is hereby granted, free of charge, to any person obtaining a copy
+              of this software and associated documentation files (the "Software"), to deal
+              in the Software without restriction, including without limitation the rights
+              to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+              copies of the Software, and to permit persons to whom the Software is
+              furnished to do so, subject to the following conditions:
+
+              The above copyright notice and this permission notice shall be included in all
+              copies or substantial portions of the Software.
+
+              THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+              IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+              FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+              AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+              LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+              OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+              SOFTWARE.
+              END
+        ,
+    );
+    return \$templates{$extension};
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+new-proyect - create the necesary files and directories for a given proyect
+
+=head1 SYNOPSIS
+
+    Options
+        --help          Show help. 
+        --project-name  Name for the proyect.
+
+=head1 LICENSE
+
+MIT License
+
+=head1 AUTHOR
+
+clasclin - clasclin@gmail.com
+
+=head1 BUGS
+
+It's perfect, no bugs haha.
+
+=cut
+
