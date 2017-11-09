@@ -8,9 +8,10 @@ use warnings;
 use utf8::all;
 use diagnostics;
 use autodie;
-use Getopt::Long; 
-use Pod::Usage;
-use File::Basename;
+use Getopt::Long qw(GetOptions); 
+use Pod::Usage qw(pod2usage);
+use File::Basename qw(fileparse dirname basename);
+use POSIX qw(strftime);
 
 ## prototypes definitions
 
@@ -67,6 +68,11 @@ sub build_tree($) {
     create_file($project_readme); 
     create_file($project_lic);
     create_file($project_git);
+
+    # give permissions
+    chmod 0775, $project_pl;
+    system 'git', 'init', $project_dir;
+    exec 'vim', $project_pl;
 }
 
 sub create_file($) {
@@ -114,6 +120,8 @@ sub save_file($$) {
 
 sub find_template($$) {
     my ( $extension, $script_name ) = @_;
+    my $year = strftime "%Y", localtime;
+    my $module_name = ucfirst $script_name;
 
     my %templates = (
         pl => 
@@ -128,13 +136,51 @@ sub find_template($$) {
               use utf8::all;
               use diagnostics;
               use autodie;
-              use Getopt::Long;
-              use Pod::Usage;
+              use Getopt::Long qw(GetOptions);
+              use Pod::Usage qw(pod2usage);
               use lib 'lib';
+              use $module_name;
 
               #use Data::Dumper::Names;
 
+              my \$help = 0;
+
+              GetOptions(
+                  '--help' => \\\$help,
+              );
+
+              if (\$help) {
+                  pod2usage(2);
+              }
+
               # code goes here :)
+
+              __END__
+
+              =pod
+              
+              =head1 NAME
+              
+              $script_name - short description
+              
+              =head1 SYNOPSIS
+              
+                  Options
+                      --help          Show help. 
+              
+              =head1 LICENSE
+              
+              MIT License
+              
+              =head1 AUTHOR
+              
+              clasclin - clasclin\@gmail.com
+              
+              =head1 BUGS
+              
+              It's perfect, no bugs haha.
+              
+              =cut
 
               END
         ,
@@ -181,10 +227,10 @@ sub find_template($$) {
               END
         ,
         lic => 
-              <<~'END'
+              <<~"END"
               MIT License
 
-              Copyright (c) 2016 clasclin
+              Copyright (c) $year clasclin
 
               Permission is hereby granted, free of charge, to any person obtaining a copy
               of this software and associated documentation files (the "Software"), to deal
