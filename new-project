@@ -170,7 +170,7 @@ sub use_template($) {
               use lib 'lib';
               use $module_name;
 
-              my \$help = 0;
+              my \$help;
 
               GetOptions(
                   '--help' => \\\$help,
@@ -231,21 +231,21 @@ sub use_template($) {
         ,
         md =>
               <<~END
-              # NAME
+              ## NAME
 
               $script_name - description
 
-              # SYNOPSIS
+              ## SYNOPSIS
 
-              # DESCRIPTION
+              ## DESCRIPTION
 
-              # AUTHOR
+              ## AUTHOR
 
-              Cristian Sanabria <clasclin at gmail period com>
+              Cristian Sanabria 
 
-              # BUGS
+              ## BUGS
 
-              # SEE ALSO
+              ## SEE ALSO
 
               END
         ,
