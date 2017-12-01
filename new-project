@@ -16,9 +16,9 @@ use Carp qw/ carp croak /;
 use POSIX 'strftime';
 use experimental 'switch';
 
-## prototypes definitions
+## functions definitions
 
-sub build_project($);
+sub build_project($$);
 sub new_dir($);
 sub new_file($);
 sub use_template($);
@@ -26,56 +26,71 @@ sub save_file($$);
 
 ## variables definitions
 
-my ( $help, $project_name );
+my ( $help, $man, $name, $description );
 
 GetOptions(
-    'help'           => \$help,
-    'project-name=s' => \$project_name,
+    'help|?'         => \$help,
+    'man'            => \$man,
+    'project-name=s' => \$name,
+    'description=s'  => \$description, 
 );
 
 ## main program
 
 if ($help) {
-    pod2usage(2);
+    pod2usage( -verbose => 1 );
 }
-elsif ($project_name) {
-    unless ( -d $project_name ) {
-        build_project($project_name);
-    }
+elsif ($man) {
+    pod2usage( -verbose => 2 );
+}
+elsif ( $name && $description ) {
+    build_project($name, $description);
 }
 else {
-    pod2usage("$0: no args given");
+    pod2usage( 
+        -msg     => "Missing required args or there is a wrong number of them",
+        -verbose => 1,
+    );
 }
 
-## functions definitions
+## public functions
 
-sub build_project($) {
-    my $project_name = shift;
-    my $project = "$ENV{HOME}/proyectos/$project_name";
+sub build_project($$) {
+    my ( $name, $description ) = @_;
+
+    my $project = "$ENV{HOME}/proyectos/$name";
     my $lib     = "$project/lib";
     my $test    = "$project/t";
-    my $script  = "$project/$project_name.pl";
-    my $module  = "$project/lib/$project_name.pm";
+    my $script  = "$project/$name.pl";
+    my $module  = "$project/lib/$name.pm";
     my $readme  = "$project/README.md";
     my $licence = "$project/LICENCE";
     my $git     = "$project/.gitignore";
 
-    # create necesary dirs
-    new_dir($project);
-    new_dir($lib);
-    new_dir($test);
+    say $project;
+    say $description;
 
-    # create necesary files
-    new_file($script); 
-    new_file($module);
-    new_file($readme); 
-    new_file($licence);
-    new_file($git);
-
-    # give permissions
-    chmod 0775, $script;
-    system 'git', 'init', $project;
-    exec 'vim', $script;
+    if ( -d $project ) {
+        croak "The project already exists: $project";
+    }
+    else {
+        # create necesary dirs
+        new_dir($project);
+        new_dir($lib);
+        new_dir($test);
+    
+        # create necesary files
+        new_file($script); 
+        new_file($module);
+        new_file($readme); 
+        new_file($licence);
+        new_file($git);
+    
+        # give permissions
+        chmod 0775, $script;
+        system 'git', 'init', $project;
+        exec 'vim', $script;
+    }
 }
 
 sub new_dir($) {
@@ -96,34 +111,39 @@ sub new_file($) {
             $template = use_template({
                     script_name => $full_name, 
                     module_name => ucfirst($full_name),
-                    template    => 'pl'
-                });
+                    template    => 'pl',
+                    description => $description,
+            });
         }
         when ( $suffix =~ /[pm|pm6]$/ ) {
             $template = use_template({
                     module_name => ucfirst($full_name),
-                    template    => 'pm'
-                });
+                    template    => 'pm',
+                    description => $description,
+            });
             $full_path = dirname($full_path) . "/" . ucfirst($full_name) . "." . $suffix;
         }
         when ( $full_name =~ 'LICENCE' ) {
             $template = use_template({
-                    template => 'lic',
-                });
+                    template    => 'lic',
+                    description => $description,
+            });
         }
         when ( $full_name =~ '.gitignore' ) {
             $template = use_template({
-                    template => 'git',
-                });
+                    template    => 'git',
+                    description => $description,
+            });
         }
         when ( $full_name =~ 'README' ) {
             $template = use_template({
                     script_name => $full_name,
-                    template    => 'md'
-                });
+                    template    => 'md',
+                    description => $description
+            });
         }
         default {
-            croak "No conozco «$full_name»";
+            croak "Unknown «$full_name»";
         }
     }
     say $full_path;
@@ -146,6 +166,7 @@ sub use_template($) {
     my $script_name = $args->%{script_name} // 'meh';
     my $module_name = $args->%{module_name} // 'Meh';
     my $template    = $args->%{template};
+    my $description = $args->%{description};
 
     my $year = strftime "%Y", localtime;
 
@@ -154,7 +175,7 @@ sub use_template($) {
               <<~END
               #!/usr/bin/env perl
               #
-              # $script_name - Description
+              # $script_name - $description.
               #
 
               use 5.26.0;
@@ -165,22 +186,30 @@ sub use_template($) {
 
               #use Data::Dumper::Names;
               use Getopt::Long 'GetOptions';
-              use Pod::Usage 'pod2usage';
+              use Pod::Usage   'pod2usage';
 
               use lib 'lib';
               use $module_name;
 
-              my \$help;
+              my ( \$help, \$man );
 
               GetOptions(
-                  '--help' => \\\$help,
+                  'help|?' => \\\$help,
+                  'man'    => \\\$man,
               );
 
               if (\$help) {
-                  pod2usage(2);
+                  pod2usage( -verbose => 1 );
               }
-
-              # code goes here :)
+              elsif (\$man) {
+                  pod2usage( -verbose => 2 );
+              }
+              else {
+                  pod2usage(
+                      -msg     => "Missing required args or there is a wrong number of them",
+                      -verbose => 1,
+                  );
+              }
 
               __END__
 
@@ -188,13 +217,16 @@ sub use_template($) {
               
               =head1 NAME
               
-              $script_name - short description
+              $script_name - $description.
               
               =head1 SYNOPSIS
               
                   Options
-                      --help          Show help. 
+                      --help    Show help.
+                      --man     More help. 
               
+              =head1 EXAMPLES
+
               =head1 LICENSE
               
               MIT License
@@ -217,13 +249,18 @@ sub use_template($) {
 
               use 5.26.0;
               use warnings;
+              use autodie;
               use utf8::all;
               use Exporter 'import';
 
-              our \@EXPORT_OK = qw( );
+              our \@EXPORT_OK   = qw( );
               our \%EXPORT_TAGS = ( all => \\\@EXPORT_OK );
 
-              # code goes here :)
+              ## functions definitions
+
+              ## private functions
+
+              ## public functions
 
               1;
 
@@ -233,15 +270,17 @@ sub use_template($) {
               <<~END
               ## NAME
 
-              $script_name - description
+              $script_name - $description
 
               ## SYNOPSIS
 
               ## DESCRIPTION
 
+              ## EXAMPLES
+
               ## AUTHOR
 
-              Cristian Sanabria 
+              Cristian Sanabria (clasclin)
 
               ## BUGS
 
@@ -298,7 +337,16 @@ new-proyect - create the necesary files and directories for a given proyect
 
     Options
         --help          Show help. 
+        --man           More help.
         --project-name  Name for the proyect.
+        --description   A brief description of the project.
+
+=head1 EXAMPLES
+
+The name of the project and a description are required, otherwise a error
+will be raised
+
+new-project --project-name meh --description 'Meh is used as a template'
 
 =head1 LICENSE
 

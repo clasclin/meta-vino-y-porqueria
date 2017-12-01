@@ -21,10 +21,17 @@ en vim para ser editado.
   |___ t
 ~~~
 
-## Uso
+## Ejemplo
 
 ~~~ sh
-$ new-project --project-name meh
+# tanto el nombre del projecto como la descripción son requeridos
+$ new-project --project-name meh --description 'It does nothing'
+
+# para ver la ayuda breve
+$ new-project --help
+
+# para ver ejemplos, licencia, bugs conocidos, etc
+$ new-project --man
 ~~~
 
 ## Requisitos
