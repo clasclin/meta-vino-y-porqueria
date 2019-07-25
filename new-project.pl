@@ -223,10 +223,18 @@ sub use_template {
 
               use strict;
               use warnings;
-              use Exporter 'import';
 
-              our \@EXPORT_OK   = qw( );
-              our \%EXPORT_TAGS = ( all => \\\@EXPORT_OK );
+              sub new {
+                  my ( \$class, \$arg_for ) = \@_;
+                  my \$self = bless {}, \$class;
+                  \$self->_initialize(\$arg_for);
+                  return \$self;
+              }
+              
+              sub _initialize {
+                  my ( \$self, \$arg_for ) = \@_;
+                  #\$self->{} = \$arg_for->{};
+              }
 
               1;
 
