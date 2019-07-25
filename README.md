@@ -1,4 +1,4 @@
-# Meta vino y porquería
+# Nuevo proyecto
 
 En cada nuevo proyecto me encuentro repitiendo una serie de pasos,
 donde es necesario crear archivos, directorios, permisos, etc.
@@ -25,13 +25,13 @@ en vim para ser editado.
 
 ~~~ sh
 # tanto el nombre del projecto como la descripción son requeridos
-$ new-project --project-name meh --description 'It does nothing'
+$ new-project.pl --project-name meh --description 'It does nothing'
 
 # para ver la ayuda breve
-$ new-project --help
+$ new-project.pl --help
 
 # para ver ejemplos, licencia, bugs conocidos, etc
-$ new-project --man
+$ new-project.pl --man
 ~~~
 
 ## Requisitos
@@ -39,6 +39,9 @@ $ new-project --man
 Una versión reciente de perl (5.26), un poco por capricho y otro poco por la
 corrección de bugs.
 
+Es necesario tener instalado:
+
 ~~~
-$ cpanm utf8::all
+git
+vim
 ~~~
