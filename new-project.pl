@@ -3,39 +3,25 @@
 # new-project - template for new perl scripts
 #
 
-use 5.26.0;
+use strict;
 use warnings;
-use autodie;
-use diagnostics;
-use utf8::all;
+use utf8;
 
 use Getopt::Long 'GetOptions';
 use Pod::Usage 'pod2usage';
 use File::Basename qw/ fileparse dirname basename /;
-use Carp qw/ carp croak /;
+use Carp 'croak';
 use POSIX 'strftime';
 use experimental 'switch';
-
-## functions definitions
-
-sub build_project($$);
-sub new_dir($);
-sub new_file($);
-sub use_template($);
-sub save_file($$);
-
-## variables definitions
-
-my ( $help, $man, $name, $description );
+use IPC::Cmd 'can_run';
+use Data::Dumper::Names;
 
 GetOptions(
-    'help|?'         => \$help,
-    'man'            => \$man,
-    'project-name=s' => \$name,
-    'description=s'  => \$description, 
-);
-
-## main program
+    'help|?'         => \(my $help),
+    'man'            => \(my $man),
+    'project-name=s' => \(my $name),
+    'description=s'  => \(my $description))
+    or croak("Error on command line arguments!");
 
 if ($help) {
     pod2usage( -verbose => 1 );
@@ -44,6 +30,7 @@ elsif ($man) {
     pod2usage( -verbose => 2 );
 }
 elsif ( $name && $description ) {
+    check_dependencies();
     build_project($name, $description);
 }
 else {
@@ -53,9 +40,13 @@ else {
     );
 }
 
-## public functions
+sub check_dependencies {
+    foreach ( 'git', 'vim' ) {
+        can_run($_) or die "$_: is missing";
+    }
+}
 
-sub build_project($$) {
+sub build_project {
     my ( $name, $description ) = @_;
 
     my $project = "$ENV{HOME}/proyectos/$name";
@@ -67,106 +58,90 @@ sub build_project($$) {
     my $licence = "$project/LICENCE";
     my $git     = "$project/.gitignore";
 
-    say $project;
-    say $description;
+    print "$project - $description\n\n";
 
     if ( -d $project ) {
-        croak "The project already exists: $project";
+        die "The project already exists: $project";
     }
     else {
-        # create necesary dirs
-        new_dir($project);
-        new_dir($lib);
-        new_dir($test);
+        new_dir($_)  for ( $project, $lib, $test );
+        new_file($_) for ( $script, $module, $readme, $licence, $git );
     
-        # create necesary files
-        new_file($script); 
-        new_file($module);
-        new_file($readme); 
-        new_file($licence);
-        new_file($git);
-    
-        # give permissions
         chmod 0775, $script;
         system 'git', 'init', $project;
         exec 'vim', $script;
     }
 }
 
-sub new_dir($) {
+sub new_dir {
     my $dir = shift;
     mkdir $dir unless -d $dir;
 }
 
-sub new_file($) {
+sub new_file {
     my $full_path = shift;
 
     my @ext = qw/ pl pm md pl6 pm6 /;
     my ( $full_name, undef, $suffix ) = fileparse($full_path, @ext);
-    my ( $template, $name );
     $full_name =~ s/\.$//g;
 
-    given ( $suffix ) {
+    my $template;
+    for ( $suffix ) {
         when ( $suffix =~ /[pl|pl6]$/ ) {
             $template = use_template({
                     script_name => $full_name, 
                     module_name => ucfirst($full_name),
                     template    => 'pl',
-                    description => $description,
             });
         }
         when ( $suffix =~ /[pm|pm6]$/ ) {
             $template = use_template({
                     module_name => ucfirst($full_name),
                     template    => 'pm',
-                    description => $description,
             });
             $full_path = dirname($full_path) . "/" . ucfirst($full_name) . "." . $suffix;
         }
         when ( $full_name =~ 'LICENCE' ) {
             $template = use_template({
                     template    => 'lic',
-                    description => $description,
             });
         }
         when ( $full_name =~ '.gitignore' ) {
             $template = use_template({
                     template    => 'git',
-                    description => $description,
             });
         }
         when ( $full_name =~ 'README' ) {
             $template = use_template({
                     script_name => $full_name,
                     template    => 'md',
-                    description => $description
             });
         }
         default {
             croak "Unknown «$full_name»";
         }
     }
-    say $full_path;
+    print "$full_path\n";
     save_template($full_path, $template->$*);
 }
 
-sub save_template($$) {
+sub save_template {
     my ( $name, $data ) = @_;
 
     unless ( -f $name ) {
+        #binmode STDOUT, ':encoding(utf-8)';
         open my $fh, '>>', $name;
         print $fh $data;
         close $fh;
     }
 }
 
-sub use_template($) {
+sub use_template {
     my $args = shift;
 
     my $script_name = $args->%{script_name} // 'meh';
     my $module_name = $args->%{module_name} // 'Meh';
     my $template    = $args->%{template};
-    my $description = $args->%{description};
 
     my $year = strftime "%Y", localtime;
 
@@ -178,25 +153,24 @@ sub use_template($) {
               # $script_name - $description.
               #
 
-              use 5.26.0;
+              use strict;
               use warnings;
-              use autodie;
-              use diagnostics;
-              use utf8::all;
 
+              #use utf8::all;
+              #use autodie;
+              #use diagnostics;
               #use Data::Dumper::Names;
+
               use Getopt::Long 'GetOptions';
               use Pod::Usage   'pod2usage';
 
               use lib 'lib';
               use $module_name;
 
-              my ( \$help, \$man );
-
               GetOptions(
-                  'help|?' => \\\$help,
-                  'man'    => \\\$man,
-              );
+                  'help|?' => \\(my \$help),
+                  'man'    => \\(my \$man),
+              ) or die "Unkown command line option!";
 
               if (\$help) {
                   pod2usage( -verbose => 1 );
@@ -247,20 +221,12 @@ sub use_template($) {
               <<~END
               package $module_name;
 
-              use 5.26.0;
+              use strict;
               use warnings;
-              use autodie;
-              use utf8::all;
               use Exporter 'import';
 
               our \@EXPORT_OK   = qw( );
               our \%EXPORT_TAGS = ( all => \\\@EXPORT_OK );
-
-              ## functions definitions
-
-              ## private functions
-
-              ## public functions
 
               1;
 
@@ -322,6 +288,7 @@ sub use_template($) {
               END
         ,
     );
+
     return \$templates{$template};
 }
 
@@ -346,7 +313,7 @@ new-proyect - create the necesary files and directories for a given proyect
 The name of the project and a description are required, otherwise a error
 will be raised
 
-new-project --project-name meh --description 'Meh is used as a template'
+new-project.pl --project-name meh --description 'Meh is used as a template'
 
 =head1 LICENSE
 
